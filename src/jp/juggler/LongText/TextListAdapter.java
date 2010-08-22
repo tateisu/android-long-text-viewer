@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 
 public class TextListAdapter extends BaseAdapter {
@@ -46,6 +47,7 @@ public class TextListAdapter extends BaseAdapter {
 		if(view==null) view = inflater.inflate(layout_id, null);
 		TextView tvText = (TextView)view.findViewById(R.id.text);
 		tvText.setText(cache.getLine(pos));
+		tvText.setBackgroundColor( ((ListView)parent).isItemChecked(pos)? 0x88888888: 0x00000000 );
 		return view;
 	}
 
@@ -53,8 +55,8 @@ public class TextListAdapter extends BaseAdapter {
 		row_count = 0;
 		notifyDataSetChanged();
 	}
-	void addLineCount(int lines){
-		row_count += lines;
+	void setLineCount(int lines){
+		row_count = lines;
 		notifyDataSetChanged();
 	}
 	
@@ -84,11 +86,11 @@ public class TextListAdapter extends BaseAdapter {
     }
 
     public boolean areAllItemsEnabled() {
-        return false;
+        return true;
     }
 
     public boolean isEnabled(int position) {
-        return false;
+        return true;
     }
 
     public View getDropDownView(int position, View convertView, ViewGroup parent) {

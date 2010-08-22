@@ -4,12 +4,13 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
-import java.util.TreeSet;
-import java.util.Map.Entry;
+
+import org.mozilla.intl.chardet.nsDetector;
+import org.mozilla.intl.chardet.nsICharsetDetectionObserver;
+import org.mozilla.intl.chardet.nsPSMDetector;
 
 import jp.juggler.util.LogCategory;
 import jp.juggler.util.WorkerBase;
@@ -24,32 +25,28 @@ import android.content.DialogInterface.OnCancelListener;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.view.View;
 import android.view.Window;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
+import android.widget.AdapterView.OnItemClickListener;
 
 public class ActText extends Activity {
 	static final LogCategory log = new LogCategory("TextViewer");
 
 	final int file_step = 1000;
 	final int cache_limit = 3;
-    static final String[] enc_16bit = new String[]{
-		"UTF-16BE", "UTF-16LE", "UTF-16",
-	};
 
 	ListView lvTextList;
 	TextListAdapter adapter;
 	Handler ui_handler;
-	Intent opener;
 	ProgressDialog progress_encoding = null;
-
-	boolean bStart;
-	int task_id;
-	// 
-	String encoding = null;
-	String[] encoding_list = null;
+	File tmpdir;
 	
-    /////////////////////////
+	Intent opener;
+	int task_id;
+
 	void initUI(){
         requestWindowFeature(Window.FEATURE_PROGRESS);
         setContentView(R.layout.text_act);
@@ -58,7 +55,21 @@ public class ActText extends Activity {
         adapter = new TextListAdapter(this,cache);
         lvTextList.setAdapter(adapter);
         ui_handler = new Handler();
+        
+        lvTextList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        lvTextList.setOnItemClickListener(new OnItemClickListener() {
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view, int pos,long id) {
+				int old_pos = lvTextList.getCheckedItemPosition();
+				if(old_pos != ListView.INVALID_POSITION){
+					lvTextList.setItemChecked (old_pos,false);
+				}
+				lvTextList.setItemChecked (pos,true);
+			}
+		});
 	}
+
+    /////////////////////////
 
 	@Override public void onCreate(Bundle savedInstanceState) {
     	log.d("onCreate");
@@ -70,67 +81,100 @@ public class ActText extends Activity {
     	log.d("onNewIntent");
         initOpener(intent);
 	}
+	void initOpener(Intent intent){
+		task_id = getTaskId();
+		opener = intent;
+		encoding = null;
+		encoding_list = null;
+		adapter.clear();
+		cache.clear();
+		tmpdir = new File(Environment.getExternalStorageDirectory(),String.format("tmp_LongText_%d",task_id));
+		text_loader = new TextLoader();
+	}
     
 	@Override protected void onDestroy() {
     	log.d("onDestroy");
 		super.onDestroy();
 	}
 
-
-	void initOpener(Intent intent){
-		opener = intent;
-		encoding = null;
-		encoding_list = null;
-		text_loader = null;
-	}
-	@Override
-	protected void onRestoreInstanceState(Bundle state) {
-		super.onRestoreInstanceState(state);
-		encoding = state.getString("encoding");
-		encoding_list = state.getStringArray("encoding_list");
-		log.d("onRestoreInstanceState encoding=%s list=%s",encoding,encoding_list);
+	@Override protected void onRestart() {
+    	log.d("onRestart");
+		super.onRestart();
 	}
 
-	
+
 	@Override
 	protected void onStart() {
 		log.d("onStart");
 		super.onStart();
 	}
-
-	@Override
-	protected void onResume() {
-		log.d("onResume");
-		super.onResume();
-		if( !bStart){
-			bStart = true;
-			task_id = getTaskId();
-			next_step();
-		}
-	}
 	
-
 	@Override
 	protected void onStop() {
 		log.d("onStop");
 		super.onStop();
-		bStart = false;
-		if( text_loader != null ) text_loader.joinLoop(log,"text_loader");
-		if( encoding_checker != null ) encoding_checker.joinLoop(log,"encding_checker");
-		if( progress_encoding != null ) progress_encoding.cancel();
-		adapter.clear();
-		cache.clear();
-		delete_tmp();
+	}
+	
+	@Override
+	protected void onResume() {
+		log.d("onResume");
+		super.onResume();
+		start_worker();
+	}
+
+	@Override
+	protected void onPause() {
+    	log.d("onPause");
+		super.onPause();
+		stop_worker();
+		if( isFinishing() ){
+			log.d("isFinishing");
+			// TODO delete cache files
+			delete_tmp();
+		}
 	}
 
 	@Override
 	protected void onSaveInstanceState(Bundle state) {
-		log.d("onSaveInstanceState");
 		super.onSaveInstanceState(state);
+		log.d("onSaveInstanceState");
+		stop_worker();
 		if(encoding!=null && !encoding.startsWith("error:")) state.putString("encoding",encoding);
 		if(encoding_list!=null && encoding_list.length>0) state.putStringArray("encoding_list",encoding_list);
+		state.putInt("lno_cached",text_loader.lno_cached);
+		state.putBoolean("load_complete",text_loader.bLoadComplete);
 	}
 
+	@Override
+	protected void onRestoreInstanceState(Bundle state) {
+		super.onRestoreInstanceState(state);
+		log.d("onRestoreInstanceState");
+		encoding = state.getString("encoding");
+		encoding_list = state.getStringArray("encoding_list");
+		text_loader.lno_cached = state.getInt("lno_cached",0);
+		text_loader.bLoadComplete = state.getBoolean("load_complete",false);
+	}
+
+	////////////////////////////////////////////////////////////////
+	
+	// 
+	boolean bStart;
+	String encoding = null;
+	String[] encoding_list = null;
+	
+	void start_worker(){
+		if( !bStart){
+			bStart = true;
+			next_step();
+		}
+	}
+	void stop_worker(){
+		if(bStart){
+			bStart = false;
+			if( encoding_checker != null ) encoding_checker.joinLoop(log,"encding_checker");
+			text_loader.worker_stop();
+		}
+	}
 
 	//////////////////////////////////////////////////////
 	
@@ -139,70 +183,35 @@ public class ActText extends Activity {
 		
 		log.d("next_step encoding=%s list=%s",encoding,encoding_list);
 
-		if( encoding == null ){
-			if( encoding_list == null ){
-				// エンコーディングを調べていない
-
-				// make progress dialog
-				progress_encoding = new ProgressDialog(this);
-				progress_encoding.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-				progress_encoding.setMessage("guess encoding...");
-				progress_encoding.setCancelable(false);
-				progress_encoding.show();
-				// make encoding check thread
-				encoding_checker = new EncodingChecker();
-				encoding_checker.start();
-				// 
-				return;
-			}else if(encoding_list.length < 1 ){
-				Toast.makeText(this,"解釈可能な文字エンコーディングがありません",Toast.LENGTH_SHORT).show();
-				finish();
-				return;
-			}else if(encoding_list.length == 1 ){
-				encoding = encoding_list[0];
-			}else{
-				// エンコーディングを選択
-				AlertDialog.Builder dlg = new AlertDialog.Builder(this); 
-		        dlg.setTitle("select encoding");
-		        dlg.setItems(encoding_list, new DialogInterface.OnClickListener(){ 
-     	 			public void onClick(DialogInterface dialog, int pos){
-     	 				if(pos >= 0 && pos <  encoding_list.length ){
-     	 					encoding = encoding_list[pos];
-     	 					next_step();
-     	 				}else{
-     	 					ActText.this.finish();
-     	 				}
-     	 			}
-	        	});
-		        dlg.setOnCancelListener(new OnCancelListener() {
-					@Override
-					public void onCancel(DialogInterface dialog) {
-						log.d("cancelled");
- 	 					ActText.this.finish();
-					}
-				});
-		        dlg.show();
-		        return;
-			}
-		}
-		if( encoding.startsWith("error")){
-			Toast.makeText(this,encoding.substring(6),Toast.LENGTH_SHORT).show();
-			finish();
-			return;		
-		}
-		if( text_loader != null ){
-			log.d("loader already started.");
+		if(encoding != null ){
+			text_loader.worker_start();
 			return;
 		}
-        setProgressBarVisibility(true);
-        setProgressBarIndeterminate(true);
-		text_loader = new TextLoader();
-		text_loader.start();
+		
+		if( progress_encoding == null ){
+			// make progress dialog
+			progress_encoding = new ProgressDialog(this);
+			progress_encoding.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+			progress_encoding.setMessage("guess encoding...");
+			progress_encoding.setCancelable(false);
+			progress_encoding.show();
+			// make encoding check thread
+			encoding_checker = new EncodingChecker();
+			encoding_checker.start();
+			// 
+			return;
+		}
 	}
 
+	////////////////////////////////////////////////////
+	
 	void prepare_lines(int lines){
-		if(!bStart) return;
-		adapter.addLineCount(lines);
+		try{
+			if(!bStart) return;
+			adapter.setLineCount(lines);
+		}catch(Throwable ex){
+			ex.printStackTrace();
+		}
 	}
 
 	MyTextCache cache = new MyTextCache();
@@ -214,9 +223,8 @@ public class ActText extends Activity {
 		}
 
 		public CharSequence getLine(int lno){
-			
+			int fno = lno / file_step;
 			try{
-				int fno = lno / file_step;
 				// check cache
 				int i=0;
 				for(BulkText bulk : cache ){
@@ -233,8 +241,6 @@ public class ActText extends Activity {
 				while( cache.size() >= cache_limit ){
 					cache.removeLast();
 				}
-				File extdir = Environment.getExternalStorageDirectory();
-				File tmpdir = new File(extdir,String.format("tmp_LongText_%d",task_id));
 				BulkText bulk = new BulkText(fno,new File(tmpdir,String.format("%d",fno)));
 				cache.addFirst(bulk);
 				return bulk.getLine(lno - fno * file_step);  
@@ -246,9 +252,8 @@ public class ActText extends Activity {
 	};
 	
 	void delete_tmp(){
+		log.d("delete tmpdir %s",tmpdir.getPath());
 		try{
-			File extdir = Environment.getExternalStorageDirectory();
-			File tmpdir = new File(extdir,String.format("tmp_LongText_%d",task_id));
 			if(tmpdir.exists()){
 				for( String entry : tmpdir.list() ){
 					try{
@@ -267,72 +272,124 @@ public class ActText extends Activity {
 	// テキストを一時ファイルに保存
 	
 	TextLoader text_loader = null;
-    class TextLoader extends WorkerBase{
-    	volatile boolean bCancelled = false;
-		@Override public void cancel() {
-			bCancelled = true;
-			notifyEx();
-		}
-		public void run(){
+	class TextLoader{
+		WorkerBase worker;
+		LineNumberReader reader;
+
+		int lno_cached = 0;
+		volatile boolean bLoadComplete =false;
+		
+		TextLoader(){
 			try{
-				Context context = getApplicationContext();
-				ContentResolver cr = context.getContentResolver();
-				InputStream is = cr.openInputStream(opener.getData());
-				try{
-					File extdir = Environment.getExternalStorageDirectory();
-					if( ! extdir.canWrite() ) throw new Exception("missing permission to write to "+extdir.getPath());
-					File tmpdir = new File(extdir,String.format("tmp_LongText_%d",task_id));
-					if( ! tmpdir.exists() ){
-						if( ! tmpdir.mkdir() ) throw new Exception("cannot create directory: "+tmpdir.getPath());
-					}
-					if( ! tmpdir.canWrite() ) throw new Exception("missing permission to write to "+tmpdir.getPath());
-	
-					LineNumberReader reader = new LineNumberReader(new InputStreamReader(is,encoding));
-					
-					BulkTextBuilder builder = new BulkTextBuilder();
-					int fno=0;
-					while(!bCancelled){
-						String line = reader.readLine();
-						if(line==null) break;
-						builder.add(line);
-						if( builder.line_count == file_step ){
-							builder.save(new File(tmpdir,String.format("%d",fno++)));
-							builder.reset();
-							ui_handler.post(new Runnable() {
-								@Override public void run() {
-									prepare_lines(file_step);
-								}
-							});
-						}
-					}
-					if( builder.line_count > 0){
-						final int lines = builder.line_count;
-						builder.save(new File(tmpdir,String.format("%d",fno++)));
-						builder.reset();
-						ui_handler.post(new Runnable() {
-							@Override public void run() {
-								prepare_lines(lines);
-						        setProgressBarVisibility(false);
-						        setProgressBarIndeterminate(false);
-							}
-						});
-					}
-				}finally{
-					is.close();
+				// prepare cache directory
+				if( ! tmpdir.exists() ){
+					if( ! tmpdir.mkdir() ) throw new Exception("cannot create directory: "+tmpdir.getPath());
 				}
+				if( ! tmpdir.canWrite() ) throw new Exception("missing permission to write to "+tmpdir.getPath());
 			}catch(Throwable ex){
-				ex.printStackTrace();
-				encoding_list = null;
-				encoding = "error:"+ex.getMessage();
-				ui_handler.post(new Runnable() {
-					@Override public void run() {
-						if(bCancelled) return;
-						next_step();
-					}
-				});
+				bLoadComplete = true;
+				Toast.makeText(ActText.this,ex.getMessage(),Toast.LENGTH_SHORT).show();
 			}
 		}
-    }
+		
+		void worker_stop(){
+			// stop worker thread
+			if(worker!=null){
+				worker.joinLoop(log,"text_loader");
+				worker = null;
+			}
+			// close input
+			try{
+				if(reader!=null) reader.close();
+			}catch(Throwable ex){
+				ex.printStackTrace();
+			}
+		}
+
+		void worker_start(){
+			try{
+				prepare_lines(lno_cached);
+				if( bLoadComplete ) return;
+
+				log.d("worker_start");
+		        
+				setProgressBarVisibility(true);
+		        setProgressBarIndeterminate(true);
+
+				// prepare input files
+				Context context = getApplicationContext();
+				ContentResolver cr = context.getContentResolver();
+				reader = new LineNumberReader(new InputStreamReader(cr.openInputStream(opener.getData()),encoding));
+				
+				// prepare worker thread
+				worker = new WorkerBase(){
+					volatile boolean bCancelled = false;
+					@Override public void cancel() {
+						bCancelled = true;
+						notifyEx();
+					}
+					public void run(){
+						try{
+							int lno = 0;
+							while( !bCancelled && lno < lno_cached ){
+								reader.readLine();
+								++lno;
+							}
+							BulkTextBuilder builder = new BulkTextBuilder();
+							while(!bCancelled){
+								String line = reader.readLine();
+								if(line==null) break;
+								builder.add(line);
+								++lno;
+								if( builder.line_count == file_step ){
+									builder.save(new File(tmpdir,String.format("%d",(lno-1)/file_step )));
+									builder.reset();
+									lno_cached = lno;
+									ui_handler.post(new Runnable() {
+										@Override public void run() {
+											prepare_lines(lno_cached);
+										}
+									});
+								}
+							}
+							// end of input
+							if(!bCancelled){
+								if( builder.line_count > 0){
+									builder.save(new File(tmpdir,String.format("%d",(lno-1)/file_step)));
+									builder.reset();
+								}
+								lno_cached = lno;
+								bLoadComplete = true;
+								ui_handler.post(new Runnable() {
+									@Override public void run() {
+										prepare_lines(lno_cached);
+									}
+								});
+							}
+						}catch(Throwable ex){
+							ex.printStackTrace();
+						}finally{
+							ui_handler.post(new Runnable() {
+								@Override public void run() {
+									try{
+								        setProgressBarVisibility(false);
+								        setProgressBarIndeterminate(false);
+									}catch(Throwable ex){
+										ex.printStackTrace();
+									}
+								}
+							});
+							
+						}
+					}
+				};
+				worker.setPriority(Thread.MIN_PRIORITY);
+				worker.start();
+			} catch (Throwable ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
 	
     ///////////////////////////////////////////////////////////////
 	// 文字コード検出
@@ -344,79 +401,96 @@ public class ActText extends Activity {
 			bCancelled = true;
 			notifyEx();
 		}
+		String charset = null;
+		
 		public void run(){
 			Context context = getApplicationContext();
 			try{
+				boolean isAscii = true ;
+				nsDetector det = new nsDetector(nsPSMDetector.ALL) ;
+				det.Init(new nsICharsetDetectionObserver() {
+					public void Notify(String charset) {
+						EncodingChecker.this.charset = charset;
+					}
+				});
+
 				ContentResolver cr = context.getContentResolver();
 				InputStream is = cr.openInputStream(opener.getData());
-				byte[] sample = new byte[16384];
-				int delta = is.read(sample);
-				is.close();
-				if(delta<=0) throw new Exception("指定されたデータはサイズ0です");
-
-				TreeSet<String> found_charsets = new TreeSet<String>();
-				
-				// check 16bit 
-				if( delta >= 2  && (delta&1)==0 ){
-					for( String enc : enc_16bit ){
-						if(bCancelled) new Exception("キャンセルされました");
-						try{
-							// log.d("try %s",enc);
-							if(new String(sample,0,delta,enc).length() > 0 ) 
-								found_charsets.add(enc);
-						}catch(Throwable ex){
-							log.d("enc=%s error=%s",enc,ex.getMessage());
+				try{
+					byte[] sample = new byte[16384];
+					int nRead = 0;
+					while(charset==null){
+						if(bCancelled) throw new Exception("キャンセルされました");
+						int delta = is.read(sample);
+						if(delta==-1) throw new Exception("指定されたデータはサイズ0です");
+						if(isAscii){
+							isAscii = det.isAscii(sample,delta);
 						}
+						if(!isAscii){
+							if(det.DoIt(sample,delta, false)) break;
+						}
+						nRead += delta;
+						if(nRead >= 65536) break;
 					}
+					det.DataEnd();
+				}finally{
+					is.close();
 				}
-				// 改行コードにあたるまでsampleの末尾を削る
-				while( delta > 0 && sample[delta-1]!=0x0d && sample[delta-1]!=0x0a ){
-					--delta;
-					if(bCancelled) new Exception("キャンセルされました");
-				}
-				log.d("sample length=%d",delta);
-				// 全ての文字コードをチェックする
-				for( Entry<String, Charset> pair : java.nio.charset.Charset.availableCharsets().entrySet() ){
-					if(bCancelled) new Exception("キャンセルされました");
-					String enc = pair.getKey();
-
-					// workaround to avoid SYSSEGV
-					if(enc.equals("x-iscii-pa")) continue;
-					
-					try{
-						// log.d("try %s",enc);
-						if(new String(sample,0,delta,enc).length() > 0 ) 
-							found_charsets.add(enc);
-					}catch(Throwable ex){
-						log.d("enc=%s error=%s",enc,ex.getMessage());
-					}
-				}
-				if(bCancelled) new Exception("キャンセルされました");
-
-				String[] list = new String[ found_charsets.size() ];
-				int n=0;
-				for( String enc : found_charsets ){
-					list[n++] = enc;
+				if(isAscii) charset = "ASCII";
+				String[] list;
+				if( charset != null ){
+					list = new String[]{ charset };
+				}else{
+					list = det.getProbableCharsets() ;
 				}
 				Arrays.sort(list,new Comparator<String>(){
 					@Override public int compare(String a, String b) {
 						return a.compareToIgnoreCase(b);
 					}
-					
 				});
-
 				encoding_list = list;
-				if(list.length==1) encoding =list[0];
-			}catch(Throwable ex){
-				ex.printStackTrace();
-				encoding = "error:"+ex.getMessage();
-			}finally{
 				progress_encoding.dismiss();
-				// send notification
 				ui_handler.post(new Runnable() {
 					@Override public void run() {
 						if(bCancelled) return;
-						next_step();
+						if(encoding_list.length < 1 ){
+							Toast.makeText(ActText.this,"解釈可能な文字エンコーディングがありません",Toast.LENGTH_SHORT).show();
+						}else if(encoding_list.length ==  1 ){
+     	 					encoding = encoding_list[0];
+     	 					next_step();
+						}else{
+							// エンコーディングを選択
+							AlertDialog.Builder dlg = new AlertDialog.Builder(ActText.this); 
+					        dlg.setTitle("select encoding");
+					        dlg.setItems(encoding_list, new DialogInterface.OnClickListener(){ 
+			     	 			public void onClick(DialogInterface dialog, int pos){
+			     	 				if(pos >= 0 && pos <  encoding_list.length ){
+			     	 					encoding = encoding_list[pos];
+			     	 					next_step();
+			     	 				}else{
+			     	 					ActText.this.finish();
+			     	 				}
+			     	 			}
+				        	});
+					        dlg.setOnCancelListener(new OnCancelListener() {
+								@Override
+								public void onCancel(DialogInterface dialog) {
+									log.d("cancelled");
+			 	 					ActText.this.finish();
+								}
+							});
+					        dlg.show();
+						}
+					}
+				});
+			}catch(Throwable ex){
+				ex.printStackTrace();
+				final String strError = ex.getMessage();
+				ui_handler.post(new Runnable() {
+					@Override public void run() {
+						if(bCancelled) return;
+						Toast.makeText(ActText.this,strError,Toast.LENGTH_SHORT).show();
+						ActText.this.finish();
 					}
 				});
 			}
