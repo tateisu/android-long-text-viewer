@@ -13,5 +13,9 @@
 	    android:layout_marginLeft="8dp"
 	    android:autoLink="web"
 	    android:textColor="#ffffffff"
+	    android:textSize="16sp"
+	    android:cursorVisible="true"
+	    android:lineSpacingMultiplier="1.4"
+	    
     />
 </LinearLayout>

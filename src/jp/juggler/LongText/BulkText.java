@@ -3,6 +3,7 @@ package jp.juggler.LongText;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 
 import jp.juggler.util.LogCategory;
 
@@ -56,7 +57,7 @@ public class BulkText {
 				p+=4;
 			}
 			text = new String(buf,p,buf.length-p,"UTF-16LE");
-		}catch(Throwable ex){
+		}catch(IOException ex){
 			ex.printStackTrace();
 			line_count = 0;
 		}

@@ -23,6 +23,7 @@ public class TextListAdapter extends BaseAdapter {
 		super();
 		this.cache = cache;
 		this.inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		
 	}	
 	
 	/////////////////////////////////////////////////////////
@@ -43,11 +44,22 @@ public class TextListAdapter extends BaseAdapter {
 		return (long) pos +1;
 	}
 
+	static class ViewHolder{
+		TextView text;
+	}
+	
 	public View getView(int pos, View view , ViewGroup parent){
-		if(view==null) view = inflater.inflate(layout_id, null);
-		TextView tvText = (TextView)view.findViewById(R.id.text);
-		tvText.setText(cache.getLine(pos));
-		tvText.setBackgroundColor( ((ListView)parent).isItemChecked(pos)? 0x88888888: 0x00000000 );
+		ViewHolder holder;
+		if(view==null){
+			view = inflater.inflate(layout_id, null);
+			holder = new ViewHolder();
+			view.setTag(holder);
+			holder.text = (TextView)view.findViewById(R.id.text);
+		}else{
+			holder = (ViewHolder)view.getTag();
+		}
+		holder.text.setText(cache.getLine(pos));
+		holder.text.setBackgroundColor( ((ListView)parent).isItemChecked(pos)? 0x88888888: 0x00000000 );
 		return view;
 	}
 

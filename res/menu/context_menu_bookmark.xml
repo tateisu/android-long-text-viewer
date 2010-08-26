@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item 
+    	android:id="@+id/bookmark_edit"
+        android:title="@string/bookmark_edit"
+	/>
+    <item 
+    	android:id="@+id/bookmark_delete"
+        android:title="@string/bookmark_delete"
+	/>
+</menu>

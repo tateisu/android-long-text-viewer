@@ -2,6 +2,18 @@
 <resources>
     <string name="app_name">Long Text Viewer</string>
 
-    <string name="btnChoose">choose text.</string>
+    <string name="btnChoose">choose text.\nopen some chooser,(such as OI File Manager,Astro,etc)</string>
 	<string name="no_activity">No capable application found.</string>
+
+	<string name="bookmark">bookmark</string>
+	<string name="bookmark_add">add bookmark</string>
+	<string name="bookmark_edit">edit bookmark</string>
+	<string name="bookmark_delete">delete bookmark</string>
+	<string name="delete_warning">delete bookmark to\n[%s line %d] !!\nAre you sure?</string>
+
+	<string name="copyline_1">copy a line from here</string>
+	<string name="copyline_5">copy 5 lines from here</string>
+	<string name="copyline_10">copy 10 lines from here</string>
+	<string name="copyline_20">copy 20 lines from here</string>
+
 </resources>

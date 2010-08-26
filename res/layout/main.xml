@@ -10,9 +10,11 @@
 	    android:text="@string/btnChoose"
 	    android:id="@+id/btnChoose"
     />
-    <TextView
+
+	<Button
 	    android:layout_width="fill_parent" 
 	    android:layout_height="wrap_content" 
-	    android:text="open some chooser,(such as OI File Manager,Astro,etc)"
+	    android:text="@string/bookmark"
+	    android:id="@+id/btnBookmark"
     />
 </LinearLayout>
