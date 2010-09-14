@@ -13,6 +13,7 @@ import org.mozilla.intl.chardet.nsDetector;
 import org.mozilla.intl.chardet.nsICharsetDetectionObserver;
 import org.mozilla.intl.chardet.nsPSMDetector;
 
+import jp.juggler.LongText.BulkText.Line;
 import jp.juggler.LongText.DlgBookmark.BookmarkInfo;
 import jp.juggler.LongText.DlgBookmark.EndListener;
 import jp.juggler.util.LogCategory;
@@ -31,7 +32,6 @@ import android.content.DialogInterface.OnCancelListener;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.text.ClipboardManager;
 import android.view.ContextMenu;
@@ -153,9 +153,19 @@ public class ActText extends Activity {
 		encoding_list = null;
 		adapter.clear();
 		cache.clear();
-		tmpdir = new File(Environment.getExternalStorageDirectory(),String.format("tmp_LongText_%d",task_id));
+
+		try{
+			if(tmpdir!=null) MyDBOpenHelper.delete_tmpdir(this,ui_db,tmpdir);
+			tmpdir = MyDBOpenHelper.make_tmpdir(this,ui_db);
+			MyDBOpenHelper.sweep_tmpdir(this,ui_db,tmpdir.getParentFile());
+		}catch(Throwable ex){
+			ex.printStackTrace();
+			Toast.makeText(this,ex.getMessage(),Toast.LENGTH_SHORT).show();
+			tmpdir = null;
+			finish();
+			return;
+		}
 		text_loader = new TextLoader();
-		
 		loaded_line = 0;
 		lno_moveto = Integer.MIN_VALUE;
 		int lno = intent.getIntExtra("lno",1);
@@ -199,8 +209,8 @@ public class ActText extends Activity {
 		stop_worker();
 		if( isFinishing() ){
 			log.d("isFinishing");
-			// TODO delete cache files
-			delete_tmp();
+			MyDBOpenHelper.delete_tmpdir(this,ui_db,tmpdir);
+			tmpdir = null;
 		}
 	}
 
@@ -269,10 +279,12 @@ public class ActText extends Activity {
 	
 	void copyline(int start,int length){
 		StringBuffer sb = new StringBuffer();
+		BulkText.Line line = new Line();
 		for(int i=0;i<length;++i){
 			if(start+i >= loaded_line) break;
 			if(i>0) sb.append("\n");
-			sb.append(cache.getLine(start+i));
+			cache.loadLine(line, start+i);
+			sb.append(line);
 		}
 		if(sb.length()>0){
 			ClipboardManager cm = (ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
@@ -305,12 +317,16 @@ public class ActText extends Activity {
 			info.uri = opener.getData();
 			info.lno = lno_select;
 			info.fname = fname;
+			BulkText.Line line = new Line();
 			if( lno_select <=0 ){
 				info.caption = "";
 			}else{
-				CharSequence s =cache.getLine(lno_select-1);
-				if(s.length()>100) s=s.subSequence(0,100)+"…";
-				info.caption = s;
+				cache.loadLine(line,lno_select-1);
+				if( line.length()>100 ){
+					info.caption = line.subSequence(0,100)+"…"; 
+				}else{
+					info.caption = line.toString();
+				}
 			}
 
 			DlgBookmark.prepare(dialog,info,new EndListener() {
@@ -471,7 +487,8 @@ public class ActText extends Activity {
 			cache.clear();
 		}
 
-		public CharSequence getLine(int lno){
+		@Override
+		public void loadLine(Line line, int lno) {
 			int fno = lno / file_step;
 			// check cache
 			int i=0;
@@ -482,7 +499,8 @@ public class ActText extends Activity {
 						cache.remove(i);
 						cache.addFirst(bulk);
 					}
-					return bulk.getLine(lno - fno * file_step);  
+					bulk.loadLine(line,lno - fno * file_step);
+					return;
 				}
 				++i;
 			}
@@ -491,18 +509,10 @@ public class ActText extends Activity {
 			}
 			BulkText bulk = new BulkText(fno,new File(tmpdir,String.format("%d",fno)));
 			cache.addFirst(bulk);
-			return bulk.getLine(lno - fno * file_step);  
+			bulk.loadLine(line,lno - fno * file_step);  
 		}
 	};
 	
-	void delete_tmp(){
-		if(tmpdir != null && tmpdir.exists() ){
-			for( String entry : tmpdir.list() ){
-				new File(tmpdir,entry).delete();
-			}
-			tmpdir.delete();
-		}
-	}
 
 	///////////////////////////////////////////////////////////////
 	// テキストを一時ファイルに保存
@@ -518,16 +528,10 @@ public class ActText extends Activity {
 		volatile boolean bLoadComplete =false;
 		
 		TextLoader(){
-			try{
-				// prepare cache directory
-				if( ! tmpdir.exists() ){
-					if( ! tmpdir.mkdir() ) throw new Exception("cannot create directory: "+tmpdir.getPath());
-				}
-				if( ! tmpdir.canWrite() ) throw new Exception("missing permission to write to "+tmpdir.getPath());
-			}catch(Exception ex){
+			if( !tmpdir.canWrite() ){
 				bLoadComplete = true;
 				pbLoading.setVisibility(View.GONE);
-				Toast.makeText(ActText.this,ex.getMessage(),Toast.LENGTH_SHORT).show();
+				Toast.makeText(ActText.this,"cannot write to tmpdir",Toast.LENGTH_SHORT).show();
 			}
 		}
 		
@@ -585,6 +589,7 @@ public class ActText extends Activity {
 					notifyEx();
 				}
 				public void run(){
+					
 					try{
 						int lno = 0;
 						while( !bCancelled && lno < lno_cached ){

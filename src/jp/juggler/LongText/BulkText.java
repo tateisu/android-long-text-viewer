@@ -70,14 +70,35 @@ public class BulkText {
 		 ((buf[pos+2]&255) << 16)|
 		 ((buf[pos+3]&255) << 24);
 	}
+	
+	static class Line implements CharSequence {
+		String text;
+		int offset;
+		int length;
 
-	CharSequence getLine(int lno){
-		try{
-			int offset = offset_list[lno];
-			int length = length_list[lno];
-			return text.substring(offset,offset+length);
-		}catch(Throwable ex){
-			return ex.getMessage(); 
+		@Override public char charAt(int index) {
+			return text.charAt(offset+index);
 		}
+
+		@Override public int length() {
+			return length;
+		}
+
+		@Override public CharSequence subSequence(int start, int end) {
+			Line line = new Line();
+			line.text = this.text;
+			line.offset = this.offset + start;
+			line.length = end-start;
+			return line;
+		}
+		@Override public String toString() {
+			return text.substring(offset,offset+length);
+		}
+	}
+
+	void loadLine(Line line,int lno){
+		line.offset = offset_list[lno];
+		line.length = length_list[lno];
+		line.text = text;
 	}
 }

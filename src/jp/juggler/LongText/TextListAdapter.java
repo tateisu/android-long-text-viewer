@@ -46,6 +46,7 @@ public class TextListAdapter extends BaseAdapter {
 
 	static class ViewHolder{
 		TextView text;
+		BulkText.Line line;
 	}
 	
 	public View getView(int pos, View view , ViewGroup parent){
@@ -55,10 +56,12 @@ public class TextListAdapter extends BaseAdapter {
 			holder = new ViewHolder();
 			view.setTag(holder);
 			holder.text = (TextView)view.findViewById(R.id.text);
+			holder.line = new BulkText.Line();
 		}else{
 			holder = (ViewHolder)view.getTag();
 		}
-		holder.text.setText(cache.getLine(pos));
+		cache.loadLine(holder.line,pos);
+		holder.text.setText(holder.line);
 		holder.text.setBackgroundColor( ((ListView)parent).isItemChecked(pos)? 0x88888888: 0x00000000 );
 		return view;
 	}
