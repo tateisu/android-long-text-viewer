@@ -47,10 +47,14 @@ public class nsISO2022KRVerifier extends nsVerifier {
 	 static int    stFactor ; 
 	 static String charset  ; 
 
-	 public int[]  cclass()   { return cclass ;   }
-	 public int[]  states()   { return states ;   }
-	 public int    stFactor() { return stFactor ; }
-	 public String charset()  { return charset ;  }
+	 @Override
+	public int[]  cclass()   { return cclass ;   }
+	 @Override
+	public int[]  states()   { return states ;   }
+	 @Override
+	public int    stFactor() { return stFactor ; }
+	 @Override
+	public String charset()  { return charset ;  }
 
    public nsISO2022KRVerifier() {
 
@@ -106,7 +110,8 @@ public class nsISO2022KRVerifier extends nsVerifier {
 
    }
 
-   public boolean isUCS2() { return  false; } ;
+   @Override
+public boolean isUCS2() { return  false; } ;
 
 
 }

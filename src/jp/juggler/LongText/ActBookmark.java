@@ -53,7 +53,7 @@ public class ActBookmark extends ListActivity{
 
 		ListView lv = getListView();
 		lv.setOnItemClickListener(new OnItemClickListener() {
-			@Override public void onItemClick(AdapterView<?> arg0, View arg1,int pos, long arg3) {
+			public void onItemClick(AdapterView<?> arg0, View arg1,int pos, long arg3) {
 				cur.moveToPosition(pos);
 				String url = cur.getString(cur.getColumnIndex("uri"));
 				int lno = cur.getInt(cur.getColumnIndex("lno"));
@@ -132,13 +132,13 @@ public class ActBookmark extends ListActivity{
 				builder.setMessage("")
 				       .setCancelable(true)
 				       .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-				           public void onClick(DialogInterface dialog, int id) {
+				           public void onClick(DialogInterface dialog, int _id) {
 				                dialog.dismiss();
 				                bookmark_delete();
 				           }
 				       })
 				       .setNegativeButton("No", new DialogInterface.OnClickListener() {
-				           public void onClick(DialogInterface dialog, int id) {
+				           public void onClick(DialogInterface dialog, int _id) {
 				                dialog.cancel();
 				           }
 				       });
@@ -157,7 +157,7 @@ public class ActBookmark extends ListActivity{
 
 		case DIALOG_BOOKMARK_EDIT:
 			DlgBookmark.prepare(dialog,info,new EndListener() {
-				@Override public void onEnd(BookmarkInfo info, boolean bOK) {
+				public void onEnd(BookmarkInfo info, boolean bOK) {
 					if(bOK){
 						ContentValues c = new ContentValues();
 						c.put("caption",info.caption.toString()  );

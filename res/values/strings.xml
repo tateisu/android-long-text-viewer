@@ -9,7 +9,7 @@
 	<string name="bookmark_add">add bookmark</string>
 	<string name="bookmark_edit">edit bookmark</string>
 	<string name="bookmark_delete">delete bookmark</string>
-	<string name="delete_warning">delete bookmark to\n[%s line %d] !!\nAre you sure?</string>
+	<string name="delete_warning">delete bookmark to\n[%1$s line %2$d] !!\nAre you sure?</string>
 
 	<string name="copyline_1">copy a line from here</string>
 	<string name="copyline_5">copy 5 lines from here</string>

@@ -68,6 +68,7 @@ public class nsDetector extends nsPSMDetector
 		return ;
 	}
 
+	@Override
 	public void Report(String charset) {
 		if (mObserver != null)
 		    mObserver.Notify(charset)  ;

@@ -28,6 +28,7 @@ public class TextListAdapter extends BaseAdapter {
 	
 	/////////////////////////////////////////////////////////
 		
+	@Override
 	public boolean isEmpty() {
         return row_count == 0;
     }
@@ -80,43 +81,53 @@ public class TextListAdapter extends BaseAdapter {
 	
     private final DataSetObservable mDataSetObservable = new DataSetObservable();
 
-    public boolean hasStableIds() {
+    @Override
+	public boolean hasStableIds() {
         return false;
     }
     
-    public void registerDataSetObserver(DataSetObserver observer) {
+    @Override
+	public void registerDataSetObserver(DataSetObserver observer) {
         mDataSetObservable.registerObserver(observer);
     }
 
-    public void unregisterDataSetObserver(DataSetObserver observer) {
+    @Override
+	public void unregisterDataSetObserver(DataSetObserver observer) {
         mDataSetObservable.unregisterObserver(observer);
     }
     
-    public void notifyDataSetChanged() {
+    @Override
+	public void notifyDataSetChanged() {
         mDataSetObservable.notifyChanged();
     }
     
-    public void notifyDataSetInvalidated() {
+    @Override
+	public void notifyDataSetInvalidated() {
         mDataSetObservable.notifyInvalidated();
     }
 
-    public boolean areAllItemsEnabled() {
+    @Override
+	public boolean areAllItemsEnabled() {
         return true;
     }
 
-    public boolean isEnabled(int position) {
+    @Override
+	public boolean isEnabled(int position) {
         return true;
     }
 
-    public View getDropDownView(int position, View convertView, ViewGroup parent) {
+    @Override
+	public View getDropDownView(int position, View convertView, ViewGroup parent) {
         return getView(position, convertView, parent);
     }
 
-    public int getItemViewType(int position) {
+    @Override
+	public int getItemViewType(int position) {
         return 0;
     }
 
-    public int getViewTypeCount() {
+    @Override
+	public int getViewTypeCount() {
         return 1;
     }
 }

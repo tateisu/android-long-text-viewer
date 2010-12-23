@@ -131,7 +131,7 @@ public class nsEUCSampler {
               s = array1[i] - array2[i];
               sum += s * s;
            }
-           return (float)java.lang.Math.sqrt((double)sum) / 94.0f;
+           return (float)java.lang.Math.sqrt(sum) / 94.0f;
 	}
 }
 

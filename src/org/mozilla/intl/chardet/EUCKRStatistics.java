@@ -46,14 +46,22 @@ public class EUCKRStatistics extends nsEUCStatistics {
      static float   mSecondByteMean;
      static float   mSecondByteWeight;
 
-     public float[] mFirstByteFreq() { return mFirstByteFreq; }  
-     public float   mFirstByteStdDev()  { return mFirstByteStdDev; }  
-     public float   mFirstByteMean()  { return mFirstByteMean; }  
-     public float   mFirstByteWeight()  { return mFirstByteWeight; }  
-     public float[] mSecondByteFreq()  { return mSecondByteFreq; }  
-     public float   mSecondByteStdDev()  { return mSecondByteStdDev; }  
-     public float   mSecondByteMean()  { return mSecondByteMean; }  
-     public float   mSecondByteWeight()  { return mSecondByteWeight; }  
+     @Override
+	public float[] mFirstByteFreq() { return mFirstByteFreq; }  
+     @Override
+	public float   mFirstByteStdDev()  { return mFirstByteStdDev; }  
+     @Override
+	public float   mFirstByteMean()  { return mFirstByteMean; }  
+     @Override
+	public float   mFirstByteWeight()  { return mFirstByteWeight; }  
+     @Override
+	public float[] mSecondByteFreq()  { return mSecondByteFreq; }  
+     @Override
+	public float   mSecondByteStdDev()  { return mSecondByteStdDev; }  
+     @Override
+	public float   mSecondByteMean()  { return mSecondByteMean; }  
+     @Override
+	public float   mSecondByteWeight()  { return mSecondByteWeight; }  
 
 	public EUCKRStatistics() {
 

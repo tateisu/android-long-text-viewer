@@ -77,13 +77,13 @@ public class ActText extends Activity {
         pbLoading = (ProgressBar)findViewById(R.id.progress);
         tvNaviLine = (TextView)findViewById(R.id.navi);
 
-        adapter = new TextListAdapter(this,cache);
+        adapter = new TextListAdapter(this,text_cache);
         lvTextList.setAdapter(adapter);
         ui_handler = new Handler();
         
         lvTextList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+
         lvTextList.setOnItemClickListener(new OnItemClickListener() {
-			@Override
 			public void onItemClick(AdapterView<?> parent, View view, int pos,long id) {
 				
 				{
@@ -99,11 +99,9 @@ public class ActText extends Activity {
 		});
         lvTextList.setOnScrollListener(new OnScrollListener() {
 			
-			@Override
 			public void onScrollStateChanged(AbsListView view, int scrollState) {
 			}
 			
-			@Override
 			public void onScroll(AbsListView view, int firstVisibleItem,int visibleItemCount, int totalItemCount){
 				lno_visible = 1+firstVisibleItem;
 				update_navi();
@@ -152,7 +150,7 @@ public class ActText extends Activity {
 		encoding = null;
 		encoding_list = null;
 		adapter.clear();
-		cache.clear();
+		text_cache.clear();
 
 		try{
 			if(tmpdir!=null) MyDBOpenHelper.delete_tmpdir(this,ui_db,tmpdir);
@@ -283,7 +281,7 @@ public class ActText extends Activity {
 		for(int i=0;i<length;++i){
 			if(start+i >= loaded_line) break;
 			if(i>0) sb.append("\n");
-			cache.loadLine(line, start+i);
+			text_cache.loadLine(line, start+i);
 			sb.append(line);
 		}
 		if(sb.length()>0){
@@ -321,7 +319,7 @@ public class ActText extends Activity {
 			if( lno_select <=0 ){
 				info.caption = "";
 			}else{
-				cache.loadLine(line,lno_select-1);
+				text_cache.loadLine(line,lno_select-1);
 				if( line.length()>100 ){
 					info.caption = line.subSequence(0,100)+"…"; 
 				}else{
@@ -330,8 +328,6 @@ public class ActText extends Activity {
 			}
 
 			DlgBookmark.prepare(dialog,info,new EndListener() {
-				
-				@Override
 				public void onEnd(BookmarkInfo info, boolean bOK) {
 					if(bOK){
 						ContentValues c = new ContentValues();
@@ -479,7 +475,7 @@ public class ActText extends Activity {
 		moveto(Integer.MIN_VALUE);
 	}
 
-	MyTextCache cache = new MyTextCache();
+	MyTextCache text_cache = new MyTextCache();
 	class MyTextCache implements TextCache{
 		LinkedList<BulkText> cache = new  LinkedList<BulkText>();
 
@@ -487,7 +483,6 @@ public class ActText extends Activity {
 			cache.clear();
 		}
 
-		@Override
 		public void loadLine(Line line, int lno) {
 			int fno = lno / file_step;
 			// check cache
@@ -573,7 +568,7 @@ public class ActText extends Activity {
 				final String errstr = ex.getMessage();
 				bLoadComplete = true;
 				ui_handler.post(new Runnable() {
-					@Override public void run() {
+					public void run() {
 						pbLoading.setVisibility(View.GONE);
 						Toast.makeText(ActText.this,errstr,Toast.LENGTH_SHORT).show();
 					}
@@ -584,10 +579,12 @@ public class ActText extends Activity {
 			// prepare worker thread
 			worker = new WorkerBase(){
 				volatile boolean bCancelled = false;
-				@Override public void cancel() {
+				@Override
+				public void cancel() {
 					bCancelled = true;
 					notifyEx();
 				}
+				@Override
 				public void run(){
 					
 					try{
@@ -607,7 +604,7 @@ public class ActText extends Activity {
 								builder.reset();
 								lno_cached = lno;
 								ui_handler.post(new Runnable() {
-									@Override public void run() {
+									public void run() {
 										prepare_lines(lno_cached);
 									}
 								});
@@ -622,7 +619,7 @@ public class ActText extends Activity {
 							lno_cached = lno;
 							bLoadComplete = true;
 							ui_handler.post(new Runnable() {
-								@Override public void run() {
+								public void run() {
 									prepare_lines(lno_cached);
 									pbLoading.setVisibility(View.GONE);
 								}
@@ -632,7 +629,7 @@ public class ActText extends Activity {
 						ex.printStackTrace();
 					}finally{
 						ui_handler.post(new Runnable() {
-							@Override public void run() {
+							public void run() {
 								try{
 							        setProgressBarVisibility(false);
 							        setProgressBarIndeterminate(false);
@@ -662,14 +659,15 @@ public class ActText extends Activity {
 		}
 		String charset = null;
 		
+		@Override
 		public void run(){
 			Context context = getApplicationContext();
 			try{
 				boolean isAscii = true ;
 				nsDetector det = new nsDetector(nsPSMDetector.ALL) ;
 				det.Init(new nsICharsetDetectionObserver() {
-					public void Notify(String charset) {
-						EncodingChecker.this.charset = charset;
+					public void Notify(String _charset) {
+						EncodingChecker.this.charset = _charset;
 					}
 				});
 
@@ -681,7 +679,7 @@ public class ActText extends Activity {
 					while(charset==null){
 						if(bCancelled) throw new Exception("キャンセルされました");
 						int delta = is.read(sample);
-						if(delta==-1) throw new Exception("指定されたデータはサイズ0です");
+						if(delta==-1) break;
 						if(isAscii){
 							isAscii = det.isAscii(sample,delta);
 						}
@@ -703,14 +701,14 @@ public class ActText extends Activity {
 					list = det.getProbableCharsets() ;
 				}
 				Arrays.sort(list,new Comparator<String>(){
-					@Override public int compare(String a, String b) {
+					public int compare(String a, String b) {
 						return a.compareToIgnoreCase(b);
 					}
 				});
 				encoding_list = list;
 				progress_encoding.dismiss();
 				ui_handler.post(new Runnable() {
-					@Override public void run() {
+					public void run() {
 						if(bCancelled) return;
 						if(encoding_list.length < 1 ){
 							Toast.makeText(ActText.this,"解釈可能な文字エンコーディングがありません",Toast.LENGTH_SHORT).show();
@@ -732,7 +730,6 @@ public class ActText extends Activity {
 			     	 			}
 				        	});
 					        dlg.setOnCancelListener(new OnCancelListener() {
-								@Override
 								public void onCancel(DialogInterface dialog) {
 									log.d("cancelled");
 			 	 					ActText.this.finish();
@@ -746,7 +743,7 @@ public class ActText extends Activity {
 				ex.printStackTrace();
 				final String strError = ex.getMessage();
 				ui_handler.post(new Runnable() {
-					@Override public void run() {
+					public void run() {
 						if(bCancelled) return;
 						Toast.makeText(ActText.this,strError,Toast.LENGTH_SHORT).show();
 						ActText.this.finish();
