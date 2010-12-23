@@ -75,6 +75,7 @@ public class HtmlCharsetDetector {
 	// The Notify() will be called when a matching charset is found.
 
 	det.Init(new nsICharsetDetectionObserver() {
+		@Override
 		public void Notify(String charset) {
 		    HtmlCharsetDetector.found = true ;
 		    System.out.println("CHARSET = " + charset);

@@ -20,6 +20,7 @@ public class ActMain extends Activity {
         btnBookmark = (Button)findViewById(R.id.btnBookmark);
         
         btnChoose.setOnClickListener(new OnClickListener() {
+			@Override
 			public void onClick(View v) {
 				try{
 					Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -34,6 +35,7 @@ public class ActMain extends Activity {
 			}
 		});
         btnBookmark.setOnClickListener(new OnClickListener() {
+			@Override
 			public void onClick(View v) {
 				try{
 					Intent intent = new Intent(ActMain.this,ActBookmark.class);

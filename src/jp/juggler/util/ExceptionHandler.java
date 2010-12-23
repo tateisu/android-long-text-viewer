@@ -5,6 +5,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
 	static final LogCategory log = new LogCategory("ExceptionHandler");
 	static UncaughtExceptionHandler orig_handler;
+	@Override
 	public void uncaughtException(Thread th, Throwable ex) {
 		ex.printStackTrace();
 		orig_handler.uncaughtException(th,ex);

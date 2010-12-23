@@ -47,6 +47,7 @@ public class nsDetector extends nsPSMDetector
 		super(langFlag) ;
 	}
 
+	@Override
 	public void Init(nsICharsetDetectionObserver aObserver) {
 
 	  	mObserver = aObserver ;
@@ -54,6 +55,7 @@ public class nsDetector extends nsPSMDetector
 
 	}
 
+	@Override
 	public boolean DoIt(byte[] aBuf, int aLen, boolean oDontFeedMe) {
 
 		if (aBuf == null || oDontFeedMe )
@@ -63,6 +65,7 @@ public class nsDetector extends nsPSMDetector
 		return mDone ;
 	}
 
+	@Override
 	public void Done() {
 		this.DataEnd() ;
 		return ;

@@ -33,14 +33,17 @@ public class TextListAdapter extends BaseAdapter {
         return row_count == 0;
     }
 
+	@Override
 	public int getCount() {
 		return row_count;
 	}
 
+	@Override
 	public Object getItem(int pos) {
 		return null;
 	}
 
+	@Override
 	public long getItemId(int pos) {
 		return (long) pos +1;
 	}
@@ -50,6 +53,7 @@ public class TextListAdapter extends BaseAdapter {
 		BulkText.Line line;
 	}
 	
+	@Override
 	public View getView(int pos, View view , ViewGroup parent){
 		ViewHolder holder;
 		if(view==null){

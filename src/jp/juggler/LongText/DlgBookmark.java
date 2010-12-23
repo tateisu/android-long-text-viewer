@@ -51,6 +51,7 @@ public class DlgBookmark {
 		etCaption.setText(info.caption);
 		
 		((Button)dialog.findViewById(R.id.btnOK)).setOnClickListener(new OnClickListener() {
+			@Override
 			public void onClick(View v) {
 				info.caption = etCaption.getText().toString();
 				dialog.dismiss();
@@ -58,6 +59,7 @@ public class DlgBookmark {
 			}
 		});
 		((Button)dialog.findViewById(R.id.btnCancel)).setOnClickListener(new OnClickListener() {
+			@Override
 			public void onClick(View v) {
 				dialog.dismiss();
 				if(listener!=null) listener.onEnd(info,false);

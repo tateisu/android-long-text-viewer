@@ -76,14 +76,17 @@ public class BulkText {
 		int offset;
 		int length;
 
+		@Override
 		public char charAt(int index) {
 			return text.charAt(offset+index);
 		}
 
+		@Override
 		public int length() {
 			return length;
 		}
 
+		@Override
 		public CharSequence subSequence(int start, int end) {
 			Line line = new Line();
 			line.text = this.text;
